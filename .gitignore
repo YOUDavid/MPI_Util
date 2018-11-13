@@ -2,4 +2,8 @@
 *.o
 *.sh
 *.slurm
-*.*~
+*~
+*.swp
+source/deprecated/*
+objective/
+shared_objective/
