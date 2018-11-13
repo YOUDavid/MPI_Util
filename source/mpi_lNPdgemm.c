@@ -491,3 +491,46 @@ void mpi_lNPdgemm(char * tra_a, char * tra_b,
     //MPI_Bcast(&signal, 1, MPI_INT, 0, MPI_COMM_WORLD);  
     //pthread_exit(NULL); 
 }
+
+void pth_lNPdgemm(char * tra_a, char * tra_b,
+                  int * m_arr,  int * n_arr, int * k_arr,
+                  int * lda,  int * ldb,  int * ldc,
+                  int *  offseta,  int *  offsetb, int *  offsetc,
+                  double * * a_arr, double * * b_arr, double * * c_arr,
+                  double *  alpha,  double *  beta,
+                  int matrix_num, int * completed){    
+    double stime = omp_get_wtime();                 
+    int i;
+    sem_init(&i_lock, 0, 1);
+    sg_tra_a = tra_a;
+    sg_tra_b = tra_b;
+    sg_m_arr = m_arr;
+    sg_n_arr = n_arr;
+    sg_k_arr = k_arr;
+    sg_lda = lda;
+    sg_ldb = ldb;
+    sg_ldc = ldc;
+    sg_offseta = offseta;
+    sg_offsetb = offsetb;
+    sg_offsetc = offsetc;
+    sg_a_arr = a_arr;
+    sg_b_arr = b_arr;
+    sg_c_arr = c_arr;
+    sg_alpha = alpha;
+    sg_beta = beta;
+    sg_completed = completed;
+    sg_matrix_num = matrix_num; 
+    sg_i = 0;   
+    pthread_t computing_threads[NUM_OF_CTHREADS];            
+        
+    for (i = 0; i < NUM_OF_CTHREADS; ++i){
+        pthread_create(computing_threads + i, NULL, wrapper_NPdgemm, NULL);
+    }
+    
+    for (i = 0; i < NUM_OF_CTHREADS; ++i){
+        pthread_join(computing_threads[i], NULL);
+    }
+ 	    
+    sem_destroy(&i_lock);
+    fprintf(stderr, "pth_lNPdgemm: %f seconds taken.\n", omp_get_wtime() - stime);
+}
