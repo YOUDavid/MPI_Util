@@ -1,3 +1,15 @@
-HOW TO COMPILE:
+MPI Util --simple python MPI functions using Intel MPI and pthread
 
-make remake
+1.HOW TO COMPILE:
+
+    make debug
+
+2.HOW TO RECOMPILE:
+
+    make remake
+
+3.HOW TO USE:
+
+    Put MPI_Util.py and mpi_util.so under the same directory
+    Import functions from MPI_Util
+    See MPI_Util.py for details
