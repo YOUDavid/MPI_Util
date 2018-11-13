@@ -1,6 +1,7 @@
 MPI Util --simple python MPI functions using Intel MPI and pthread
 
-1.HOW TO COMPILE:
+
+1.HOW TO COMPILE: (supporting Intel mpiicc for now)
 
     make debug
 
@@ -8,8 +9,13 @@ MPI Util --simple python MPI functions using Intel MPI and pthread
 
     make remake
 
-3.HOW TO USE:
+3.HOW TO USE: 
 
+    Must run with 'mpirun -bootstrap slurm -n NUM_OF_NODES -ppn WORK_PER_NODE COMMAND_TO_RUN', if MPI is needed
     Put MPI_Util.py and mpi_util.so under the same directory
     Import functions from MPI_Util
     See MPI_Util.py for details
+
+Credits:
+
+NPdgemm: https://github.com/sunqm/pyscf/blob/master/pyscf/lib/np_helper/npdot.c
