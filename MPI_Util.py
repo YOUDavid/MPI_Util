@@ -4,7 +4,7 @@ import ctypes
 import os
 import sys
 from functools import reduce, partial, update_wrapper #wraps
-mpi_util = ctypes.CDLL(r'mpi_util.so')
+mpi_util = ctypes.CDLL(r'./mpi_util.so')
 
 def mpi_init():
     mpi_util.mpi_init()
@@ -138,11 +138,7 @@ def _mpi_dot_protocol(a, b, a_T=0, b_T=0, func=mpi_util.mpi_lNPdgemm):
     return c
     
 pth_lNPdgemm = _imple_protocol(_mpi_dot_protocol, mpi_util.pth_lNPdgemm)
-def pmmul(matrix1,matrix2,trans_a=0,trans_b=0):
-    return pth_lNPdgemm(matrix1, matrix2, trans_a, trans_b)
-
-def pmmmul(matrix1,matrix2,matrix3,trans_a=0,trans_b=0):
-    return pth_lNPdgemm(pth_lNPdgemm(matrix1, matrix2, trans_a, 0), matrix3, 0, trans_b)
+mpi_lNPdgemm = _imple_protocol(_mpi_dot_protocol, mpi_util.mpi_lNPdgemm)
 
 if __name__ == '__main__':
     mpi_init()
