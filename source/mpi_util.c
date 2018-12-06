@@ -25,11 +25,16 @@ void mpi_setONT(int ont) {
 
 void mpi_init(){
     int i, signal; //chose which function to execute
-    MPI_Init(NULL, NULL);
+	int provided_level;
+    MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &provided_level);
+	
     MPI_Comm_size(MPI_COMM_WORLD , &WORLD_SIZE);
     MPI_Comm_rank(MPI_COMM_WORLD, &WORLD_RANK);
     MPI_Get_processor_name(PROCESSOR_NAME, &NAME_LEN);
     fprintf(stderr, "P%d: Initialized\n", WORLD_RANK);
+	if (provided_level != MPI_THREAD_MULTIPLE){
+		fprintf(stderr, "P%d: no multithreading support!\n", WORLD_RANK);
+	}
     TEMP_ARR = malloc(sizeof(double) * 3 * CHUNCK_SIZE * WGRAPE_SIZE);
     A_ARR = malloc(sizeof(double*) * WGRAPE_SIZE); 
     B_ARR = malloc(sizeof(double*) * WGRAPE_SIZE); 
@@ -62,8 +67,8 @@ void mpi_init(){
 
     MPI_Type_create_struct(NBLOCKS_MATRIX_META, blocklengths, offsets, types, &MPI_MATRIX_META);
     MPI_Type_commit(&MPI_MATRIX_META);    
-    /*WTHREAD_COMM = malloc(sizeof(MPI_Comm) * NUM_OF_WTHREADS * WORLD_SIZE);
-    for (i = 0; i < NUM_OF_WTHREADS * WORLD_SIZE; ++i){
+    /*WTHREAD_COMM = malloc(sizeof(MPI_Comm) * (WORLD_SIZE - 1));
+    for (i = 0; i < WORLD_SIZE - 1; ++i){
         MPI_Comm_dup(MPI_COMM_WORLD, WTHREAD_COMM + i);
     }*/
     
@@ -74,11 +79,12 @@ void mpi_init(){
         MPI_Bcast(&signal, 1, MPI_INT, 0, MPI_COMM_WORLD);
         while (signal >= 0){
             switch (signal){
-/*                case SIGNAL_LDGEMM:*/
-/*                    mpi_ldgemm(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,*/
-/*                               NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,*/
-/*                               0, NULL);    */
-/*                    break;*/
+                case SIGNAL_LPRESIDUE:
+                    mpi_lpresidue(0, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+                                  NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, 
+								  NULL, NULL, NULL, NULL,
+                                  NULL, 0, 0, '\0', 0, NULL, 0, 0);    
+                    break;
                 case SIGNAL_LNPDGEMM:
                     mpi_lNPdgemm(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                                  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -100,7 +106,7 @@ void mpi_init(){
             MPI_Bcast(&signal, 1, MPI_INT, 0, MPI_COMM_WORLD);
         }
         fprintf(stderr, "P%d: Finalized\n", WORLD_RANK);
-       /* for (i = 0; i < NUM_OF_WTHREADS * WORLD_SIZE; ++i){
+        /*for (i = 0; i < WORLD_SIZE - 1; ++i){
             MPI_Comm_free(WTHREAD_COMM + i);
         }*/
         
@@ -116,7 +122,7 @@ void mpi_final(){
     int signal = -1;
     int i;
     MPI_Bcast(&signal, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    /*for (i = 0; i < NUM_OF_WTHREADS * WORLD_SIZE; ++i){
+    /*for (i = 0; i < NUM_OF_WTHREADS - 1; ++i){
         MPI_Comm_free(WTHREAD_COMM + i);
     }*/
     fprintf(stderr, "P%d: Finalized\n", WORLD_RANK);

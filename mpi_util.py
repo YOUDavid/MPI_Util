@@ -47,7 +47,7 @@ def test_timer(func, r=1, i=1):
     sleep(i)
     return result, ct_l, wt_l
 
-def test_wrapper(func, matrix1=None, matrix2=None, rep=1, inter=1, ont=[8]):
+def test_wrapper(func, matrix1=None, matrix2=None, rep=1, inter=1, ont=[1,2,4,8,16]):
     resultlist = list()
     for t in ont:
         mpi_util.mpi_setONT(ctypes.c_int(t))
@@ -239,7 +239,7 @@ def map_dot_protocol(a, b, a_T=0, b_T=0, func=np.dot):
         else:
             return list(map(lambda x: func(x[0].T, x[1].T), zip(a, b)))
 
-def mpi_dot_protocol(a, b, a_T=0, b_T=0, func=mpi_util.mpi_lOMPdgemm):
+def mpi_dot_protocol(a, b, a_T=0, b_T=0, func=mpi_util.mpi_lNPdgemm):
     assert(len(a) == len(b))
     matrix_num = len(a)
     c = []   
@@ -370,7 +370,7 @@ def mpi_dot_protocol(a, b, a_T=0, b_T=0, func=mpi_util.mpi_lOMPdgemm):
          alpha.ctypes.data_as(ctypes.c_void_p),
          beta.ctypes.data_as(ctypes.c_void_p),
          ctypes.c_int(matrix_num),
-         completed.ctypes.data_as(ctypes.c_void_p), )
+         completed.ctypes.data_as(ctypes.c_void_p))
     #for i in a_transposed:
     #    a[i] = a[i].T
     #for i in b_transposed:
@@ -408,11 +408,13 @@ def test_checker(resultlist, threshold=1e-3):
         print "End of checking!"                
         
 if __name__ == '__main__':
-#    mpi_init()
+    mpi_init()
 #    l = 0;
 #    a = np.empty((2,2), dtype=np.float64, order='C')
 #    mpi_print(l, a)
 #    mpi_final()
+
+
     np.random.seed(0)
     mpi_init()
     #np.set_printoptions(threshold=np.nan)
@@ -425,6 +427,8 @@ if __name__ == '__main__':
         low = int(os.environ['size'])
     else:
         low = 100    
+    
+    low *= 2
     
     m = 0
     k = 0
@@ -448,6 +452,9 @@ if __name__ == '__main__':
         #p = np.random.randint(low, high=hig)        
         a.append(np.random.rand(m,k) * 2)
         b.append(np.random.rand(k,n) * 2)
+        a[i] = a[i][:low/2, :low/2]
+        b[i] = b[i][:low/2, :low/2]
+        
 #        c.append(np.random.rand(n,p) * 20)
         #b[i] = b[i].T
         #a[i] = a[i].T
@@ -479,7 +486,7 @@ if __name__ == '__main__':
         result +=i
     #print len(result)
     
-    test_checker(result)
+    #test_checker(result)
 # 1: map numpy dot,  omp=cpu_per_task, 1
 # 2: map pyscf ddot, omp=cpu_per_task, 1
 # 3: pmmul use ddot, omp=cpu_per_task, 1
@@ -499,6 +506,6 @@ if __name__ == '__main__':
         sys.stdout.write(str(np.std(result[i]['wtlist'])) + ' ')
         if (i + 1) % 5 == 0:
             print ''
-        
+#        
     mpi_final()
 

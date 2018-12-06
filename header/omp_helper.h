@@ -1,9 +1,9 @@
 #ifndef OMP_HELPER_H
 #define OMP_HELPER_H
-
-#include <omp.h>
+#define _GNU_SOURCE
 #include "shared_types.h"
 #include "shared_library.h"
+#include <omp.h>
 void omp_dgemm(const charptr RESTRICT tra_a, const charptr RESTRICT tra_b,
                const intptr RESTRICT m_arr, const intptr RESTRICT n_arr, const intptr RESTRICT k_arr,
                const doubleptr RESTRICT alpha, const doubleptrptr RESTRICT a_arr, const intptr RESTRICT lda,
@@ -26,4 +26,5 @@ void NPdgemm(const char trans_a, const char trans_b,
              const int offseta, const int offsetb, const int offsetc,
              double *a, double *b, double *c,
              const double alpha, const double beta);
+int stick_to_core(int core_id);
 #endif

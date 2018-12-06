@@ -1,6 +1,6 @@
 #ifndef SHARED_LIBRARY_H
 #define SHARED_LIBRARY_H
-
+/*#include <mkl.h>*/
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
