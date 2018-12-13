@@ -60,7 +60,7 @@ typedef __attribute__((aligned(8))) const char* constcharptr;
 /*            const double *, const double *, const int *,*/
 /*            const double *, const int *,*/
 /*            const double *, double *, const int *);*/
-
+//BRANCH STRIDE_MPI
 #define NBLOCKS_MATRIX_META 13
 struct _MATRIX_META {
 	char tra_a, tra_b;
