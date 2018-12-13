@@ -1,7 +1,7 @@
 #include "mpi_helper.h"   
 #include "omp_helper.h" 
 #include "blas_helper.h"
-
+#define DEBUG 0
 static int sg_i = 0;
 static int sg_s_i[WGRAPE_SIZE];
 static int sg_count = 0;
@@ -50,7 +50,7 @@ int intbsearch(int *arr, int length, int x){
 
 void *wrapper_presidue_Local(void *data){
     int core_id = (long) data;
-    stick_to_core(core_id);
+    //stick_to_core(core_id);
     int ind, ipair, i, j, k;
     int s_i[CGRAPE_SIZE] = {0};
     int s_count = 0;
@@ -160,6 +160,7 @@ void *wrapper_presidue_Local(void *data){
                 
             }
             ///End actual computation
+            //fprintf(stderr, "%s: %s: %s\n", __FILE__, __func__, "end of actual computation");
         }       
         
         if (sg_i >= sg_len_pl_tdi){
@@ -278,7 +279,7 @@ void *wrapper_presidue_Receiver(void *data){//finished
 
 void *wrapper_presidue_Worker(void *data){//finished
     int core_id = (long) data;
-    stick_to_core(core_id);
+    //stick_to_core(core_id);
     int ind, locali, ipair, i, j, k;
     int temp_smijijfm_ready = 0;
     NP_MATRIX temp_wrapper;

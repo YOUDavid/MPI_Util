@@ -1,8 +1,9 @@
+#define DEBUG 0
 #include "shared_types.h"
 #include "shared_library.h" 
 #include "blas_helper.h"
 #include "omp_helper.h"
-/*#include <mkl.h>*/
+
 ///Actual matrix objects on heap
 ///View of matrix objects on stack
 void test_print_np_matrix(NP_MATRIX *input){
@@ -54,8 +55,7 @@ void test_print_np_matrix(NP_MATRIX *input){
 }
 
 
-void generate_supermatrix(NP_MATRIX **ptr2old, int i, int j, int k, int l, 
-                          double **matrices, int *blockdim, int ndim, char *tras){
+void generate_supermatrix(NP_MATRIX **ptr2old, const int i, const int j, const int k, const int l, constdoubleptrconstptr matrices, constintconstptr blockdim, const int ndim, constcharconstptr tras){
     NP_MATRIX ul, ur, ll, lr;
     NP_MATRIX *new = renew_np_matrix(ptr2old, blockdim[i] + blockdim[j], blockdim[k] + blockdim[l]);
     wrap_np_matrix(&ul, matrices[i * ndim + k], blockdim[i], blockdim[k], tras[i * ndim + k]);
@@ -68,7 +68,7 @@ void generate_supermatrix(NP_MATRIX **ptr2old, int i, int j, int k, int l,
     copy_np_matrix(new, ul.m, ul.n, &lr);
 }
 
-void flip_ij(NP_MATRIX **ptr2old, const int i, const int j, NP_MATRIX *matrix, int *blockdim){
+void flip_ij(NP_MATRIX **ptr2old, const int i, const int j, NP_MATRIX *matrix, constintconstptr blockdim){
     NP_MATRIX *new = renew_np_matrix(ptr2old, blockdim[i] + blockdim[j], blockdim[i] + blockdim[j]);
     NP_MATRIX t_matrix;
     wrap_np_matrix(&t_matrix, matrix->matrix, matrix->m, matrix->n, matrix->tra);

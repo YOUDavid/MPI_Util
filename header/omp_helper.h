@@ -26,5 +26,6 @@ void NPdgemm(const char trans_a, const char trans_b,
              const int offseta, const int offsetb, const int offsetc,
              double *a, double *b, double *c,
              const double alpha, const double beta);
-int stick_to_core(int core_id);
+             
+int stick_to_core(const int core_id);             
 #endif

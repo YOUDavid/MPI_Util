@@ -13,5 +13,5 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <stddef.h>
-
+#include "lapack.h"
 #endif

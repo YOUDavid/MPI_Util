@@ -73,7 +73,7 @@ void matrix_print_meta(MATRIX_META *meta){
    
 void *wrapper_NPdgemm(void *data){
     int core_id = (long) data;
-    stick_to_core(core_id);
+    //stick_to_core(core_id);
     int i;
     int s_i[CGRAPE_SIZE] = {0};
     int s_count = 0;
@@ -358,7 +358,7 @@ void *wrapper_Receiver(void *data){
 
 void *wrapper_Worker(void *data){
     int core_id = (long) data;
-    stick_to_core(core_id);
+    //stick_to_core(core_id);
     int i;
     //int total_count = 0;
     //int s_i[WGRAPE_SIZE] = {0};
