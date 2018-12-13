@@ -27,6 +27,7 @@ static double *sg_alpha;
 static double *sg_beta;
 static int *sg_completed;
 static int sg_matrix_num;
+//extern MPI_Comm *WTHREAD_COMM;
 extern MPI_Datatype MPI_MATRIX_META;
 extern int WORLD_SIZE, NAME_LEN, WORLD_RANK;
 extern char PROCESSOR_NAME[MPI_MAX_PROCESSOR_NAME];
@@ -112,9 +113,9 @@ void *wrapper_Driver(void *data){
     int i, temp_sc, s_count;
     int dest = *(int *)data;
     MPI_Request meta_status[WGRAPE_SIZE], data_a_status[WGRAPE_SIZE], data_b_status[WGRAPE_SIZE], result_status[WGRAPE_SIZE], signal_status;
-	MATRIX_META matrix_meta[WGRAPE_SIZE];
+    MATRIX_META matrix_meta[WGRAPE_SIZE];
     int s_i[WGRAPE_SIZE] = {0};
-    
+    //fprintf(stderr, "wrapper_Driver: total %d tasks\n", sg_matrix_num);
     while (TRUE){
         s_count = 0;
         //fprintf(stderr, "wrapper_Driver: want ilock\n");
@@ -213,7 +214,7 @@ void *wrapper_Receiver(void *data){
     int s_count = 0;
     int dest = 0; // to root
     int notreceived[WGRAPE_SIZE];
-	int s_i[WGRAPE_SIZE];
+    int s_i[WGRAPE_SIZE];
     MPI_Request meta_status[WGRAPE_SIZE], data_a_status[WGRAPE_SIZE], data_b_status[WGRAPE_SIZE], result_status[WGRAPE_SIZE], signal_status;
     
     
@@ -223,9 +224,7 @@ void *wrapper_Receiver(void *data){
     MPI_Irecv(&sg_count, 1, MPI_INT, dest, SIGNAL_TAG, MPI_COMM_WORLD, &signal_status);
     MPI_Wait(&signal_status, MPI_STATUS_IGNORE);
     s_count = sg_count;
-	
 
-	
     sem_post(&i_lock);
     //fprintf(stderr, "wrapper_Receiver: release ilock\n");
 /*    for (i = s_count - 1; i >= 0; --i){*/
@@ -241,7 +240,7 @@ void *wrapper_Receiver(void *data){
 		MPI_Wait(&signal_status, MPI_STATUS_IGNORE);	
 		
         for (i = s_count - 1; i >= 0; --i){
-			//fprintf(stderr, "wrapper_Receiver: receiving meta[%d] of global ID = %d from root with tag=%d\n", i, s_i[i], NUM_OF_TAGS * s_i[i] + META_TAG);
+	    //fprintf(stderr, "wrapper_Receiver: receiving meta[%d] of global ID = %d from root with tag=%d\n", i, s_i[i], NUM_OF_TAGS * s_i[i] + META_TAG);
             MPI_Irecv(sg_matrix_meta + i, 1, MPI_MATRIX_META, dest, NUM_OF_TAGS * s_i[i] + META_TAG, MPI_COMM_WORLD, meta_status + i);
 			
             //MPI_Recv(sg_matrix_meta + i, 1, MPI_MATRIX_META, dest, NUM_OF_TAGS * i + META_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -251,7 +250,7 @@ void *wrapper_Receiver(void *data){
         //fprintf(stderr, "wrapper_Receiver: Received all meta, s_count=%d\n", s_count);
         for (i = s_count - 1; i >= 0; --i){
             MPI_Wait(meta_status + i, MPI_STATUS_IGNORE);
-			//fprintf(stderr, "wrapper_Receiver: received meta[%d] of global ID = %d of %d X %d from root with tag=%d\n", i, s_i[i], sg_matrix_meta[i].m, sg_matrix_meta[i].n, NUM_OF_TAGS * s_i[i] + META_TAG);
+	    //fprintf(stderr, "wrapper_Receiver: received meta[%d] of global ID = %d of %d X %d from root with tag=%d\n", i, s_i[i], sg_matrix_meta[i].m, sg_matrix_meta[i].n, NUM_OF_TAGS * s_i[i] + META_TAG);
             notreceived[i] = 2;
             MPI_Irecv(sg_a_arr[i], sg_matrix_meta[i].m * sg_matrix_meta[i].k, MPI_DOUBLE, dest, NUM_OF_TAGS * s_i[i] + DATA_A_TAG, MPI_COMM_WORLD, data_a_status + i);              
             MPI_Irecv(sg_b_arr[i], sg_matrix_meta[i].k * sg_matrix_meta[i].n, MPI_DOUBLE, dest, NUM_OF_TAGS * s_i[i] + DATA_B_TAG, MPI_COMM_WORLD, data_b_status + i);
@@ -313,7 +312,7 @@ void *wrapper_Receiver(void *data){
             //fprintf(stderr, "wrapper_Receiver: got plock:%d\n", i);
                 //if (sg_notreceived[i] == 0){
             //fprintf(stderr, "wrapper_Receiver: Sending out c_arr[%d]\n", i);
-			//fprintf(stderr, "wrapper_Receiver: sending result[%d] of global ID = %d of %d X %d\n", i, s_i[i], sg_matrix_meta[i].m, sg_matrix_meta[i].n);
+            //fprintf(stderr, "wrapper_Receiver: sending result[%d] of global ID = %d of %d X %d\n", i, s_i[i], sg_matrix_meta[i].m, sg_matrix_meta[i].n);
             MPI_Isend(sg_c_arr[i], sg_matrix_meta[i].m * sg_matrix_meta[i].n, MPI_DOUBLE, dest, NUM_OF_TAGS * s_i[i] + RESULT_TAG, MPI_COMM_WORLD, result_status + i);
             //MPI_Ssend(sg_c_arr[i], sg_matrix_meta[i].m * sg_matrix_meta[i].n, MPI_DOUBLE, dest, NUM_OF_TAGS * i + RESULT_TAG, MPI_COMM_WORLD);
             //sg_notreceived[i] = 1;

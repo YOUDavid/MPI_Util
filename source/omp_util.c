@@ -1,6 +1,8 @@
+#define _GNU_SOURCE 
 #include "omp_helper.h"
 
-int stick_to_core(int core_id) {
+
+int stick_to_core(const int core_id) {
 /*   int num_cores = sysconf(_SC_NPROCESSORS_ONLN);*/
 /*   if (core_id < 0 || core_id >= num_cores)*/
 /*      return EINVAL;*/

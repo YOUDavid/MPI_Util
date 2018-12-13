@@ -17,6 +17,15 @@ from multiprocessing import Pool
 # 7: map cdgemm,     omp=cpu_per_task, 1
 # 8: map cddot,      omp=cpu_per_task, 1
 
+class NP_MATRIX(ctypes.Structure):
+    _fields_ = [('m'      , ctypes.c_int   ),
+                ('n'      , ctypes.c_int   ),
+                ('mstride', ctypes.c_int   ),
+                ('nstride', ctypes.c_int   ),
+                ('matrix' , ctypes.c_void_p)]
+                
+                
+
 mpi_util = ctypes.CDLL(r'/home/zhyou/mpi/mpi_util.so')
 raw_partial = partial
 def named_partial(raw_func, *args, **kwargs):
@@ -56,37 +65,6 @@ def test_wrapper(func, matrix1=None, matrix2=None, rep=1, inter=1, ont=[1,2,4,8,
         resultlist.append({'result': result[0], 'ctlist': result[1], 'wtlist': result[2], 'name': func.__name__, 'ont': t})
         sleep(inter)
     return resultlist
-
-
-
-def mmul(matrix):
-    result =ddot(matrix[0], matrix[1])
-    return result
-def mTmul(matrix):
-    result =ddot(matrix[0].T, matrix[1])
-    return result
-def mmTul(matrix):
-    result =ddot(matrix[0], matrix[1].T)
-    return result
-def mTmTul(matrix):
-    result =ddot(matrix[0].T, matrix[1].T)
-    return result
-
-def pmmul(matrix1,matrix2,trans_a=0,trans_b=0):
-    nprocs = int(int(os.environ["SLURM_CPUS_PER_TASK"])/2)
-    P = Pool(processes=nprocs,maxtasksperchild=int(len(matrix1)/nprocs+1))
-    if(trans_a==1 and trans_b==0):
-        result = P.map(mTmul,zip(matrix1,matrix2))
-    elif(trans_a==1 and trans_b==1):
-        result = P.map(mTmTul,zip(matrix1,matrix2))
-    elif(trans_a==0 and trans_b==0):
-        result = P.map(mmul,zip(matrix1,matrix2))
-    else:
-        result = P.map(mmTul,zip(matrix1,matrix2))
-    P.close()
-    P.join()
-    return result
-
 
 
 def mpi_init():
@@ -243,8 +221,6 @@ def mpi_dot_protocol(a, b, a_T=0, b_T=0, func=mpi_util.mpi_lNPdgemm):
     assert(len(a) == len(b))
     matrix_num = len(a)
     c = []   
-    #a_transposed = []
-    #b_transposed = []
     ptr2a = np.empty(matrix_num, dtype=ctypes.c_void_p)
     ptr2b = np.empty(matrix_num, dtype=ctypes.c_void_p)
     ptr2c = np.empty(matrix_num, dtype=ctypes.c_void_p)  

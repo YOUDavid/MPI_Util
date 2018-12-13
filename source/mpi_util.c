@@ -1,3 +1,4 @@
+#define _GNU_SOURCE 
 #include "mpi_helper.h"   
 #include "omp_helper.h"
 
@@ -25,16 +26,16 @@ void mpi_setONT(int ont) {
 
 void mpi_init(){
     int i, signal; //chose which function to execute
-	int provided_level;
+    int provided_level;
     MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &provided_level);
 	
     MPI_Comm_size(MPI_COMM_WORLD , &WORLD_SIZE);
     MPI_Comm_rank(MPI_COMM_WORLD, &WORLD_RANK);
     MPI_Get_processor_name(PROCESSOR_NAME, &NAME_LEN);
     fprintf(stderr, "P%d: Initialized\n", WORLD_RANK);
-	if (provided_level != MPI_THREAD_MULTIPLE){
-		fprintf(stderr, "P%d: no multithreading support!\n", WORLD_RANK);
-	}
+    if (provided_level != MPI_THREAD_MULTIPLE){
+        fprintf(stderr, "P%d: no multithreading support!\n", WORLD_RANK);
+    }
     TEMP_ARR = malloc(sizeof(double) * 3 * CHUNCK_SIZE * WGRAPE_SIZE);
     A_ARR = malloc(sizeof(double*) * WGRAPE_SIZE); 
     B_ARR = malloc(sizeof(double*) * WGRAPE_SIZE); 
@@ -120,9 +121,10 @@ void mpi_init(){
 
 void mpi_final(){
     int signal = -1;
-    int i;
     MPI_Bcast(&signal, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    /*for (i = 0; i < NUM_OF_WTHREADS - 1; ++i){
+    /*
+    int i;
+    for (i = 0; i < NUM_OF_WTHREADS - 1; ++i){
         MPI_Comm_free(WTHREAD_COMM + i);
     }*/
     fprintf(stderr, "P%d: Finalized\n", WORLD_RANK);

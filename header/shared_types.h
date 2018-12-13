@@ -60,7 +60,7 @@ typedef __attribute__((aligned(8))) const char* constcharptr;
 /*            const double *, const double *, const int *,*/
 /*            const double *, const int *,*/
 /*            const double *, double *, const int *);*/
-//BRANCH STRIDE_MPI
+
 #define NBLOCKS_MATRIX_META 13
 struct _MATRIX_META {
 	char tra_a, tra_b;
@@ -71,7 +71,7 @@ typedef struct _MATRIX_META MATRIX_META;
 
 struct _NP_MATRIX {
     char tra; //DEPRECATED
-    int m, n;//, mstride, nstride; TO BE IMPLEMENTED
+    int m, n, mstride, nstride;
     double *matrix;
 };
 typedef struct _NP_MATRIX NP_MATRIX;

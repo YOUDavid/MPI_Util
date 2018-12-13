@@ -7,7 +7,7 @@
 
 void test_print_np_matrix(NP_MATRIX *input);
 
-void generate_supermatrix(NP_MATRIX **ptr2old, const int i, const int j, const int k, const int l, constdoubleptrconstptr matrices, constintconstptr blockdim, const int ndim, constcharconstptr tras);
+void generate_supermatrix(NP_MATRIX **ptr2old, const int i, const int j, const int k, const int l, constdoubleptrconstptr matrices, constintconstptr blockdim, const int ndim);
 
 void flip_ij(NP_MATRIX **ptr2old, const int i, const int j, NP_MATRIX *matrix, constintconstptr blockdim);
 
@@ -25,7 +25,7 @@ NP_MATRIX *cnew_np_matrix(const int m, const int n);
 
 NP_MATRIX *renew_np_matrix(NP_MATRIX **old, const int m, const int n);
 
-void wrap_np_matrix(NP_MATRIX *wrapper, double *raw, const int m, const int n, const char tra);
+void wrap_np_matrix(NP_MATRIX *wrapper, doubleconstptr raw, const int m, const int n, const int mstride, const int nstride);
 
 double index_np_matrix(NP_MATRIX *matrix, const int i, const int j);
 
