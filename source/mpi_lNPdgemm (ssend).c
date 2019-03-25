@@ -28,8 +28,8 @@ static int sg_matrix_num;
 extern MPI_Datatype MPI_MATRIX_META;
 extern int WORLD_SIZE, NAME_LEN, WORLD_RANK;
 extern char PROCESSOR_NAME[MPI_MAX_PROCESSOR_NAME];
-/*extern double *TEMP_ARR;*/
-/*extern double **A_ARR, **B_ARR, **C_ARR;*/
+extern double *TEMP_ARR;
+extern double **A_ARR, **B_ARR, **C_ARR;
 static MATRIX_META sg_matrix_meta[WGRAPE_SIZE];
 
 void matrix_set_meta(const char *tra_a, const char *tra_b, 
@@ -108,7 +108,6 @@ void *wrapper_Driver(void *data){
     int total_count = 0;
     int i, temp_sc, s_count;
     int dest = *(int *)data;
-    MPI_Request meta_status[WGRAPE_SIZE], data_a_status[WGRAPE_SIZE], data_b_status[WGRAPE_SIZE], result_status[WGRAPE_SIZE];
 	MATRIX_META matrix_meta[WGRAPE_SIZE];
     int s_i[WGRAPE_SIZE] = {0};
     
@@ -147,27 +146,18 @@ void *wrapper_Driver(void *data){
                             sg_k_arr + i, sg_lda + i, sg_ldb + i, sg_ldc + i, 
                             sg_offseta + i, sg_offsetb + i, sg_offsetc + i, 
                             sg_alpha + i, sg_beta + i, matrix_meta + s_count);
-            MPI_Isend(matrix_meta + s_count, 1, MPI_MATRIX_META, dest, NUM_OF_TAGS * s_count + META_TAG, MPI_COMM_WORLD, meta_status + s_count);
+            MPI_Send(matrix_meta + s_count, 1, MPI_MATRIX_META, dest, NUM_OF_TAGS * s_count + META_TAG, MPI_COMM_WORLD);
+            MPI_Send(sg_a_arr[i], sg_m_arr[i] * sg_k_arr[i], MPI_DOUBLE, dest, NUM_OF_TAGS * s_count + DATA_A_TAG, MPI_COMM_WORLD);
+            MPI_Send(sg_b_arr[i], sg_k_arr[i] * sg_n_arr[i], MPI_DOUBLE, dest, NUM_OF_TAGS * s_count + DATA_B_TAG, MPI_COMM_WORLD);
         }
-        MPI_Waitall(temp_sc, meta_status, MPI_STATUSES_IGNORE);
-        s_count = temp_sc;
-        while (s_count > 0){
-            --s_count;
-            i = s_i[s_count];
-            MPI_Isend(sg_a_arr[i], sg_m_arr[i] * sg_k_arr[i], MPI_DOUBLE, dest, NUM_OF_TAGS * s_count + DATA_A_TAG, MPI_COMM_WORLD, data_a_status + s_count);
-            MPI_Isend(sg_b_arr[i], sg_k_arr[i] * sg_n_arr[i], MPI_DOUBLE, dest, NUM_OF_TAGS * s_count + DATA_B_TAG, MPI_COMM_WORLD, data_b_status + s_count);
-        }
-        
-        MPI_Waitall(temp_sc, data_a_status, MPI_STATUSES_IGNORE);
-        MPI_Waitall(temp_sc, data_b_status, MPI_STATUSES_IGNORE);
+
         
         s_count = temp_sc;
         while (s_count > 0){
             --s_count;
             i = s_i[s_count];
-            MPI_Recv(sg_c_arr[i], sg_m_arr[i] * sg_n_arr[i], MPI_DOUBLE, dest, NUM_OF_TAGS * s_count + RESULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);//, result_status + s_count);
+            MPI_Recv(sg_c_arr[i], sg_m_arr[i] * sg_n_arr[i], MPI_DOUBLE, dest, NUM_OF_TAGS * s_count + RESULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
-        //MPI_Waitall(temp_sc, result_status, MPI_STATUSES_IGNORE);
     }
 }  
 
@@ -177,68 +167,31 @@ void *wrapper_Receiver(void *data){
     int dest = 0; // to root
     int notreceived[WGRAPE_SIZE];
 	int s_i[WGRAPE_SIZE];
-    MPI_Request meta_status[WGRAPE_SIZE], data_a_status[WGRAPE_SIZE], data_b_status[WGRAPE_SIZE], result_status[WGRAPE_SIZE];
     
     sem_wait(&i_lock);
     MPI_Recv(&sg_count, 1, MPI_INT, dest, SIGNAL_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     s_count = sg_count;
 	
+
 	
     sem_post(&i_lock);
     while (s_count > 0){
-	    MPI_Recv(s_i, s_count, MPI_INT, dest, SIGNAL_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		MPI_Recv(s_i, s_count, MPI_INT, dest, SIGNAL_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         for (i = s_count - 1; i >= 0; --i){
-            MPI_Irecv(sg_matrix_meta + i, 1, MPI_MATRIX_META, dest, NUM_OF_TAGS * i + META_TAG, MPI_COMM_WORLD, meta_status + i);
-            sem_post(&t_lock);
+            MPI_Recv(sg_matrix_meta + i, 1, MPI_MATRIX_META, dest, NUM_OF_TAGS * i + META_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Recv(sg_a_arr[i], sg_matrix_meta[i].m * sg_matrix_meta[i].k, MPI_DOUBLE, dest, NUM_OF_TAGS * i + DATA_A_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);         
+            MPI_Recv(sg_b_arr[i], sg_matrix_meta[i].k * sg_matrix_meta[i].n, MPI_DOUBLE, dest, NUM_OF_TAGS * i + DATA_B_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            sem_post(&t_lock);   
+            sem_post(r_lock + i); 
         }
-        MPI_Waitall(s_count, meta_status, MPI_STATUSES_IGNORE);
-        
-        for (i = s_count - 1; i >= 0; --i){
-            notreceived[i] = 2;
-			sg_a_arr[i] = malloc(sizeof(double) * sg_matrix_meta[i].m * sg_matrix_meta[i].k);
-			sg_b_arr[i] = malloc(sizeof(double) * sg_matrix_meta[i].k * sg_matrix_meta[i].n);
-			sg_c_arr[i] = malloc(sizeof(double) * sg_matrix_meta[i].m * sg_matrix_meta[i].n);
-            MPI_Irecv(sg_a_arr[i], sg_matrix_meta[i].m * sg_matrix_meta[i].k, MPI_DOUBLE, dest, NUM_OF_TAGS * i + DATA_A_TAG, MPI_COMM_WORLD, data_a_status + i);              
-            MPI_Irecv(sg_b_arr[i], sg_matrix_meta[i].k * sg_matrix_meta[i].n, MPI_DOUBLE, dest, NUM_OF_TAGS * i + DATA_B_TAG, MPI_COMM_WORLD, data_b_status + i);
-        }
-        r_count = 0;
-        flag = 0;
-        while (r_count < 2 * s_count){
-            i = -1;
-            MPI_Testany(s_count, data_a_status, &i, &flag, MPI_STATUS_IGNORE);
-            if (flag == TRUE && i != MPI_UNDEFINED){
-                notreceived[i] -= 1;  
-                ++r_count;
-                if (notreceived[i] == 0){
-                    sem_post(r_lock + i);
-                }
-            }
-            MPI_Testany(s_count, data_b_status, &i, &flag, MPI_STATUS_IGNORE);
-            if (flag == TRUE && i != MPI_UNDEFINED){
-                notreceived[i] -= 1; 
-                ++r_count; 
-                if (notreceived[i] == 0){
-                    sem_post(r_lock + i);
-                }
-            }
-        }
-        
+
         for (i = s_count - 1; i >= 0; --i){
             sem_wait(p_lock + i);
-            MPI_Isend(sg_c_arr[i], sg_matrix_meta[i].m * sg_matrix_meta[i].n, MPI_DOUBLE, dest, NUM_OF_TAGS * i + RESULT_TAG, MPI_COMM_WORLD, result_status + i);
+            MPI_Ssend(sg_c_arr[i], sg_matrix_meta[i].m * sg_matrix_meta[i].n, MPI_DOUBLE, dest, NUM_OF_TAGS * i + RESULT_TAG, MPI_COMM_WORLD);
         }
-        
-        MPI_Waitall(s_count, result_status, MPI_STATUSES_IGNORE);
-        for (i = s_count - 1; i >= 0; --i){
-			free(sg_a_arr[i]);
-			free(sg_b_arr[i]);
-			free(sg_c_arr[i]);
-        }
-        
-
         sem_wait(&i_lock);
         MPI_Recv(&sg_count, 1, MPI_INT, dest, SIGNAL_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        s_count = sg_count; 
+        s_count = sg_count;     
         sem_post(&i_lock);
     }       
     sem_wait(&i_lock);
@@ -264,7 +217,7 @@ void *wrapper_Worker(void *data){
             NPdgemm(sg_matrix_meta[i].tra_a, sg_matrix_meta[i].tra_b,
                 sg_matrix_meta[i].m, sg_matrix_meta[i].n, sg_matrix_meta[i].k,
                 sg_matrix_meta[i].lda, sg_matrix_meta[i].ldb, sg_matrix_meta[i].ldc,
-                sg_matrix_meta[i].offseta, sg_matrix_meta[i].offsetb, 
+                sg_matrix_meta[i].offseta, sg_matrix_meta[i].offsetb,                      
                 sg_matrix_meta[i].offsetc, sg_a_arr[i], sg_b_arr[i], sg_c_arr[i],
                 sg_matrix_meta[i].alpha, sg_matrix_meta[i].beta); 
             sem_post(p_lock + i); 
@@ -274,6 +227,8 @@ void *wrapper_Worker(void *data){
         } else {
             sem_post(&i_lock);
         }
+         
+        
     }
     pthread_exit(NULL); 
 }
@@ -290,9 +245,6 @@ void mpi_lNPdgemm(char * tra_a, char * tra_b,
     if (WORLD_RANK == 0){
         MPI_Bcast(&signal, 1, MPI_INT, 0, MPI_COMM_WORLD);
     }    
-    //getenv("OMP_NUM_THREADS")
-    //printf("OMP_NUM_THREADS: %d in processor %s, rank %d out of %d processors/worlds \n", omp_get_max_threads(), PROCESSOR_NAME, WORLD_RANK, WORLD_SIZE);
-    //omp_set_num_threads(3);
     int i, *dest;
     sem_init(&i_lock, 0, 1);
     //Root:
@@ -322,7 +274,7 @@ void mpi_lNPdgemm(char * tra_a, char * tra_b,
         pthread_t *driving_threads = malloc(sizeof(pthread_t) * NUM_OF_WTHREADS * (WORLD_SIZE - 1));
         pthread_t computing_threads[NUM_OF_CTHREADS];            
  
-        flogf(stderr, "mpi_lNPdgemm: total %d tasks\n", sg_matrix_num);
+        fprintf(stderr, "mpi_lNPdgemm: total %d tasks\n", sg_matrix_num);
         for (i = 0; i < NUM_OF_CTHREADS; ++i){
             pthread_create(computing_threads + i, NULL, wrapper_NPdgemm, (void*) i);
         }
@@ -352,13 +304,10 @@ void mpi_lNPdgemm(char * tra_a, char * tra_b,
         //malloc_stats();
         sem_init(&t_lock, 0, 0); //task lock : how many unfinished task in current comm
         sg_i = 0;
-/*        sg_temp_arr = TEMP_ARR;*/
-/*        sg_a_arr = A_ARR;*/
-/*        sg_b_arr = B_ARR;*/
-/*        sg_c_arr = C_ARR;*/
-        sg_a_arr = malloc(sizeof(double*) * WGRAPE_SIZE); 
-        sg_b_arr = malloc(sizeof(double*) * WGRAPE_SIZE); 
-        sg_c_arr = malloc(sizeof(double*) * WGRAPE_SIZE); 
+        sg_temp_arr = TEMP_ARR;
+        sg_a_arr = A_ARR;
+        sg_b_arr = B_ARR;
+        sg_c_arr = C_ARR;
         for (i = 0; i < WGRAPE_SIZE; ++i){
             sem_init(r_lock + i, 0, 0); //resource lock : if current task resource is ready
             sem_init(p_lock + i, 0, 0); //product lock : if current product is ready
@@ -384,10 +333,6 @@ void mpi_lNPdgemm(char * tra_a, char * tra_b,
             sem_destroy(p_lock + i);
         }
         sem_destroy(&t_lock);
-        free(sg_a_arr);
-        free(sg_b_arr);
-        free(sg_c_arr);
-        
     } 
     sem_destroy(&i_lock);
     flogf(stderr, "mpi_lNPdgemm: %f seconds taken from processor %s, rank %d out of %d worlds.\n", 

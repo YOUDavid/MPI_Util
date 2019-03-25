@@ -1,4 +1,3 @@
-#define DEBUG 0
 #include "shared_types.h"
 #include "shared_library.h" 
 #include "blas_helper.h"
@@ -6,6 +5,38 @@
 
 ///Actual matrix objects on heap
 ///View of matrix objects on stack
+int intbsearch(constintconstptr arr,const int length,const int x){ 
+/*     int l, m, r;
+    l = 0;
+    r = length - 1;
+    
+    if (x > arr[r]){
+        return -1;
+    }
+    
+    while (l <= r) { 
+        m = l + (r - l) / 2; 
+        if (arr[m] == x){
+            return m; 
+        }
+        if (arr[m] < x){
+            l = m + 1; 
+        }
+        else{
+            r = m - 1; 
+        }
+    }  */
+	
+	int i;
+	for (i = 0; i < length; ++i){
+		if (arr[i] == x){
+			return i;
+		}
+	}
+	
+    return -1; 
+} 
+
 void test_print_np_matrix(NP_MATRIX *input){
     int i;
     int j;
@@ -155,7 +186,7 @@ void delete_np_matrix(NP_MATRIX **ptr2old){
         free(*ptr2old);
         *ptr2old = NULL;
     } else{
-        fprintf(stderr, "%s: %s: %s\n", __FILE__, __func__, "deleting null matrix!");
+        flogf(stderr, "%s: %s: %s\n", __FILE__, __func__, "deleting null matrix!");
     }
 }
 
@@ -316,23 +347,39 @@ void scal_np_matrix(NP_MATRIX **ptr2result, NP_MATRIX *x, const double a){
     NP_MATRIX *result = *ptr2result;
     int i;
     int inc = 1;
-    if (x->tra == 'N'){
-        result = renew_np_matrix(ptr2result, x->m, x->n);
-        #pragma omp parallel for
-        for (i = 0; i < x->m; ++i){
-            dcopy_(&x->n, x->matrix + i * x->n, &inc, result->matrix + i * result->n, &inc);
-            dscal_(&result->n, &a, result->matrix + i * result->n, &inc);
-        }
-    } else if (x->tra == 'T'){
-        result = renew_np_matrix(ptr2result, x->m, x->n);
-        #pragma omp parallel for
-        for (i = 0; i < x->m; ++i){
-            dcopy_(&x->n, x->matrix + i, &x->m, result->matrix + i * result->n, &inc);
-            dscal_(&result->n, &a, result->matrix + i * result->n, &inc);
-        }
-    } else{
-        fprintf(stderr, "%s: data structure error: unrecognized tra tag: %c\n", __func__, x->tra);
-    }
+	if (result != x){
+		if (x->tra == 'N'){
+			result = renew_np_matrix(ptr2result, x->m, x->n);
+			#pragma omp parallel for
+			for (i = 0; i < x->m; ++i){
+				dcopy_(&x->n, x->matrix + i * x->n, &inc, result->matrix + i * result->n, &inc);
+				dscal_(&result->n, &a, result->matrix + i * result->n, &inc);
+			}
+		} else if (x->tra == 'T'){
+			result = renew_np_matrix(ptr2result, x->m, x->n);
+			#pragma omp parallel for
+			for (i = 0; i < x->m; ++i){
+				dcopy_(&x->n, x->matrix + i, &x->m, result->matrix + i * result->n, &inc);
+				dscal_(&result->n, &a, result->matrix + i * result->n, &inc);
+			}
+		} else{
+			fprintf(stderr, "%s: data structure error: unrecognized tra tag: %c\n", __func__, x->tra);
+		}
+	} else{
+		if (x->tra == 'N'){
+			#pragma omp parallel for
+			for (i = 0; i < x->m; ++i){
+				dscal_(&x->n, &a, x->matrix + i * result->n, &inc);
+			}
+		} else if (x->tra == 'T'){
+			#pragma omp parallel for
+			for (i = 0; i < x->n; ++i){
+				dscal_(&x->m, &a, x->matrix + i * result->m, &inc);
+			}
+		} else{
+			fprintf(stderr, "%s: data structure error: unrecognized tra tag: %c\n", __func__, x->tra);
+		}
+	}
 }
 
 void ddot_np_matrix(NP_MATRIX **ptr2c, NP_MATRIX *a, NP_MATRIX *b){

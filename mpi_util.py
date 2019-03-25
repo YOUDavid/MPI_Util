@@ -47,12 +47,12 @@ def test_timer(func, r=1, i=1):
     sleep(i)
     return result, ct_l, wt_l
 
-def test_wrapper(func, matrix1=None, matrix2=None, rep=1, inter=1, ont=[1,2,4,8,16]):
+def test_wrapper(func, matrix1=None, matrix2=None, a_T=0, b_T=0, rep=1, inter=1, ont=[1]):
     resultlist = list()
     for t in ont:
         mpi_util.mpi_setONT(ctypes.c_int(t))
         os.environ['OMP_NUM_THREADS'] = str(t)
-        result = test_timer(partial(func, matrix1, matrix2), r=repeats)
+        result = test_timer(partial(func, matrix1, matrix2, a_T, b_T), r=repeats)
         resultlist.append({'result': result[0], 'ctlist': result[1], 'wtlist': result[2], 'name': func.__name__, 'ont': t})
         sleep(inter)
     return resultlist
@@ -87,7 +87,8 @@ def pmmul(matrix1,matrix2,trans_a=0,trans_b=0):
     P.join()
     return result
 
-
+def dotbypmmul(matrix1, matrix2, trans_a=0, trans_b=0):
+    pass
 
 def mpi_init():
     mpi_util.mpi_init()
@@ -371,10 +372,6 @@ def mpi_dot_protocol(a, b, a_T=0, b_T=0, func=mpi_util.mpi_lNPdgemm):
          beta.ctypes.data_as(ctypes.c_void_p),
          ctypes.c_int(matrix_num),
          completed.ctypes.data_as(ctypes.c_void_p))
-    #for i in a_transposed:
-    #    a[i] = a[i].T
-    #for i in b_transposed:
-    #    b[i] = b[i].T
     return c
     
     
@@ -408,27 +405,15 @@ def test_checker(resultlist, threshold=1e-3):
         print "End of checking!"                
         
 if __name__ == '__main__':
-    mpi_init()
-#    l = 0;
-#    a = np.empty((2,2), dtype=np.float64, order='C')
-#    mpi_print(l, a)
-#    mpi_final()
-
-
     np.random.seed(0)
     mpi_init()
     #np.set_printoptions(threshold=np.nan)
-    if os.environ['length'] != '':
-        l = int(os.environ['length'])
-    else:
-        l = 100
+
+    l = 1
         
-    if os.environ['size'] != '':
-        low = int(os.environ['size'])
-    else:
-        low = 100    
-    
-    low *= 2
+
+    low = 1000
+
     
     m = 0
     k = 0
@@ -436,7 +421,7 @@ if __name__ == '__main__':
     #p = 0
     hig = low + 1
     interval = 0
-    repeats = 5
+    repeats = 7
     a = []
     b = []
     c = []
@@ -445,21 +430,27 @@ if __name__ == '__main__':
     m = np.random.randint(low, high=hig)
     k = np.random.randint(low, high=hig)        
     n = np.random.randint(low, high=hig) 
+    dummy = 0
     print "Start to generate ramdom square matrix list"
     T_gen = time()
     for i in range(l):
-
-        #p = np.random.randint(low, high=hig)        
-        a.append(np.random.rand(m,k) * 2)
-        b.append(np.random.rand(k,n) * 2)
-        a[i] = a[i][:low/2, :low/2]
-        b[i] = b[i][:low/2, :low/2]
+#        m = np.random.randint(low, high=hig)
+#        k = np.random.randint(low, high=hig)        
+#        n = np.random.randint(low, high=hig) 
+        #p = np.random.randint(low, high=hig)
+#        temp = np.random.rand(m,k) * 2
+#        #temp2 = np.random.rand(,)  
+#        a.append()
+#        b.append(temp)
         
 #        c.append(np.random.rand(n,p) * 20)
         #b[i] = b[i].T
-        #a[i] = a[i].T
-#        a.append(np.array(np.array(np.random.rand(m, k), dtype = np.int32), dtype = np.float64))
-#        b.append(np.array(np.array(np.random.rand(k, n), dtype = np.int32), dtype = np.float64))
+#        a.append(np.array(np.ones((m,m)), dtype=np.float64))
+#        b.append(np.array(np.ones((m,m)), dtype=np.float64))
+#        a.append(np.array(np.zeros((m,m)), dtype=np.float64))
+#        b.append(np.array(np.zeros((m,m)), dtype=np.float64))
+        a.append(np.array(np.random.rand(m,m), dtype=np.float64))
+        b.append(np.array(np.random.rand(m,m), dtype=np.float64))
 #        a.append(np.array(np.arange(m * k), dtype=np.float64).reshape(m, k) + 2 * i)
 #        b.append(np.array(np.arange(n * k), dtype=np.float64).reshape(k, n) + 2 * i + 1) 
 #    print a[50]
@@ -468,8 +459,8 @@ if __name__ == '__main__':
     print "Finish generating the random matrix of length:", l, "and size:",m, k, n#, p
     print "Time used:", time() - T_gen
     print "Running test cases for", repeats, "cycles"
-    wrapper = partial(test_wrapper, matrix1=a, matrix2=b, rep=repeats, inter=interval)
-    funclist = [#imple_protocol(map_dot_protocol, np.dot),
+    wrapper = partial(test_wrapper, matrix1=a, matrix2=b, a_T = 0, b_T = 0, rep=repeats, inter=interval)
+    funclist = [imple_protocol(map_dot_protocol, np.dot),
                 imple_protocol(map_dot_protocol, ddot),
                 #pmmul,
                 #imple_protocol(mpi_dot_protocol, mpi_util.mpi_ldgemm),
@@ -486,7 +477,7 @@ if __name__ == '__main__':
         result +=i
     #print len(result)
     
-    #test_checker(result)
+    test_checker(result)
 # 1: map numpy dot,  omp=cpu_per_task, 1
 # 2: map pyscf ddot, omp=cpu_per_task, 1
 # 3: pmmul use ddot, omp=cpu_per_task, 1
@@ -500,7 +491,7 @@ if __name__ == '__main__':
         sys.stdout.write(str(np.mean(result[i]['wtlist'])) + ' ')
         if (i + 1) % 5 == 0:
             print ''
-
+    print ''
     print 'stdev'
     for i in xrange(len(result)):
         sys.stdout.write(str(np.std(result[i]['wtlist'])) + ' ')
